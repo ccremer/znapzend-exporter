@@ -1,0 +1,10 @@
+/Dockerfile
+/*.y*ml
+/vendor
+/.docker
+/.github
+/.idea
+/.git
+/dist
+*.md
+*.adoc

@@ -1,0 +1,35 @@
+---
+name: Test
+
+on:
+  push:
+    branches:
+    - "*"
+    tags-ignore:
+    - "*"
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/cache@v1
+      with:
+        path: /home/runner/go/pkg/mod
+        key: go-mod
+    - name: Run unit tests
+      run: go test ./...
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - uses: actions/cache@v1
+      with:
+        path: /home/runner/go/pkg/mod
+        key: go-mod
+    - uses: goreleaser/goreleaser-action@v1
+      with:
+        args: release --snapshot
