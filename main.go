@@ -3,10 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
-	"net/http"
 	"os"
 )
 
@@ -22,10 +20,6 @@ All flags can be read from Environment variables as well (replace . with _ , e.g
 However, CLI flags take precedence.
 
 `
-)
-
-const (
-	delayResetParam = "delayResetBy"
 )
 
 func main() {
@@ -47,34 +41,21 @@ func main() {
 		"date":    date,
 	}).Info("Starting Znapzend exporter")
 
+	r := SetupRouter()
+	err := r.Run(cfg.BindAddr)
+	log.WithError(err).Fatal("Shutting down.")
+}
+
+func SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
 		LogrusHandler(),
 		gin.Recovery(),
 	)
-	r.GET("/health/ready", handleReadiness)
+	r.GET("/presnap/*job", handlePreSnap)
+	r.GET("/postsnap/*job", handlePostSnap)
+	r.GET("/health/ready", handleLiveness)
 	r.GET("/health/alive", handleLiveness)
 	r.GET("/metrics", handleMetrics)
-
-	err := r.Run(cfg.BindAddr)
-	log.WithError(err).Fatal("Shutting down.")
-}
-
-func handleMetrics(context *gin.Context) {
-	SetLogLevel(context, log.DebugLevel)
-	promhttp.Handler().ServeHTTP(context.Writer, context.Request)
-}
-
-func handleReadiness(context *gin.Context) {
-	SetLogLevel(context, log.DebugLevel)
-	context.JSON(http.StatusOK, struct{ Message string }{
-		Message: "Webserver up and ready.",
-	})
-}
-
-func handleLiveness(context *gin.Context) {
-	SetLogLevel(context, log.DebugLevel)
-	context.JSON(http.StatusOK, struct{ Message string }{
-		Message: "If you can reach this, I'm alive!",
-	})
+	return r
 }
