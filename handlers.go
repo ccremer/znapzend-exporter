@@ -21,35 +21,31 @@ type (
 	}
 )
 
+var (
+	promHandler = promhttp.Handler()
+)
+
 func handlePreSnap(context *gin.Context) {
 	parameters, err := ParseAndValidateInput(context)
 	if err != nil {
-		SetLog(context, log.WarnLevel, err.Error())
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	SetLogWithFields(context, log.DebugLevel, "Input Data", log.Fields{
-		"parameters": parameters,
-	})
+	SetMetric(preSnapMetric, &parameters, parameters.ResetPreSnap)
 
 }
 
 func handlePostSnap(context *gin.Context) {
 	parameters, err := ParseAndValidateInput(context)
 	if err != nil {
-		SetLog(context, log.ErrorLevel, err.Error())
-		context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	SetLogWithFields(context, log.DebugLevel, "Input Data", log.Fields{
-		"parameters": parameters,
-	})
+	SetMetric(preSnapMetric, &parameters, parameters.ResetPostSnap)
 
 }
 
 func handleMetrics(context *gin.Context) {
 	SetLogLevel(context, log.DebugLevel)
-	promhttp.Handler().ServeHTTP(context.Writer, context.Request)
+	promHandler.ServeHTTP(context.Writer, context.Request)
 }
 
 // For now, only one endpoint is required.
@@ -63,10 +59,20 @@ func handleLiveness(context *gin.Context) {
 func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 	p := Parameters{}
 	if p.JobName = strings.TrimPrefix(context.Param("job"), "/"); p.JobName == "" {
-		return p, errors.New("missing Job name in URL")
-	}
-	if err := context.ShouldBindQuery(&p); err != nil {
+		err := errors.New("missing Job name in URL")
+		setErrorForRequest(context, err)
 		return p, err
 	}
+	if err := context.ShouldBindQuery(&p); err != nil {
+		setErrorForRequest(context, err)
+	}
+	SetLogWithFields(context, log.DebugLevel, "Validated Input Data", log.Fields{
+		"parameters": p,
+	})
 	return p, nil
+}
+
+func setErrorForRequest(context *gin.Context, err error) {
+	SetLog(context, log.ErrorLevel, err.Error())
+	context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 }
