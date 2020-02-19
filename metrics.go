@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 	"time"
 )
 
@@ -31,7 +33,28 @@ var (
 	}, []string{"job"})
 )
 
-func SetMetric(vec *prometheus.GaugeVec, p *Parameters, reset bool) error {
+type (
+	JobContext struct {
+		Parameters Parameters
+		Context    *gin.Context
+	}
+)
+
+func NewJobContext(c *gin.Context) (*JobContext, error) {
+	if p, err := ParseAndValidateInput(c); err != nil {
+		SetLog(c, log.ErrorLevel, err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return nil, err
+	} else {
+		return &JobContext{
+			Parameters: p,
+			Context:    nil,
+		}, nil
+	}
+}
+
+func (j *JobContext) SetMetric(vec *prometheus.GaugeVec, reset bool) error {
+	p := j.Parameters
 	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
 	if err != nil {
 		return err
@@ -43,7 +66,7 @@ func SetMetric(vec *prometheus.GaugeVec, p *Parameters, reset bool) error {
 			logEntry.WithField("delay", p.ResetAfter).Debug("Delaying job reset.")
 			time.Sleep(p.ResetAfter)
 			vec.WithLabelValues(p.JobName).Set(0)
-			logEntry.WithField("gauge", gauge.Desc().String()).Info("Reset gauge.")
+			logEntry.Info("Reset gauge.")
 		}()
 	}
 	return nil

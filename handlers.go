@@ -26,25 +26,25 @@ var (
 )
 
 func handlePreSnap(context *gin.Context) {
-	parameters, err := ParseAndValidateInput(context)
+	job, err := NewJobContext(context)
 	if err != nil {
 		return
 	}
-	SetMetric(preSnapMetric, &parameters, parameters.ResetPreSnap)
+	job.SetMetric(preSnapMetric, job.Parameters.ResetPreSnap)
 
 }
 
 func handlePostSnap(context *gin.Context) {
-	parameters, err := ParseAndValidateInput(context)
+	job, err := NewJobContext(context)
 	if err != nil {
 		return
 	}
-	SetMetric(preSnapMetric, &parameters, parameters.ResetPostSnap)
+	job.SetMetric(preSnapMetric, job.Parameters.ResetPostSnap)
 
 }
 
 func handleMetrics(context *gin.Context) {
-	SetLogLevel(context, log.DebugLevel)
+	SetLog(context, log.DebugLevel, "Accessing metrics.")
 	promHandler.ServeHTTP(context.Writer, context.Request)
 }
 
@@ -59,20 +59,13 @@ func handleLiveness(context *gin.Context) {
 func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 	p := Parameters{}
 	if p.JobName = strings.TrimPrefix(context.Param("job"), "/"); p.JobName == "" {
-		err := errors.New("missing Job name in URL")
-		setErrorForRequest(context, err)
-		return p, err
+		return p, errors.New("missing Job name in URL")
 	}
 	if err := context.ShouldBindQuery(&p); err != nil {
-		setErrorForRequest(context, err)
+		return p, err
 	}
 	SetLogWithFields(context, log.DebugLevel, "Validated Input Data", log.Fields{
 		"parameters": p,
 	})
 	return p, nil
-}
-
-func setErrorForRequest(context *gin.Context, err error) {
-	SetLog(context, log.ErrorLevel, err.Error())
-	context.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 }

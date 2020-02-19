@@ -41,6 +41,9 @@ func main() {
 		"date":    date,
 	}).Info("Starting Znapzend exporter")
 
+	if log.GetLevel() != log.DebugLevel {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	r := SetupRouter()
 	err := r.Run(cfg.BindAddr)
 	log.WithError(err).Fatal("Shutting down.")
