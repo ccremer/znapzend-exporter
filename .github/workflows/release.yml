@@ -10,13 +10,24 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
     - uses: actions/cache@v1
       with:
         path: /home/runner/go/pkg/mod
         key: go-mod
+    - name: Download codeclimate reporter
+      run: wget -O cc-reporter https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 && chmod +x cc-reporter
+    - name: Prepare code coverage
+      run: ./cc-reporter before-build
     - name: Run unit tests
-      run: go test ./...
+      run: go test -coverprofile=c.out ./...
+    - name: Format code coverage
+      run: ./cc-reporter format-coverage c.out -t gocov -p $(basename $PWD)
+    - name: Upload code coverage
+      env:
+        CC_TEST_REPORTER_ID: e83a1c47936e887bb37d1e37ebd3395744d4b73693a3c6e199294182be045210
+      run: ./cc-reporter after-build -t gocov -p $(basename $PWD)
+
   goreleaser:
     runs-on: ubuntu-latest
     needs:

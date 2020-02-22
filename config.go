@@ -17,6 +17,7 @@ func init() {
 	setupFlags()
 }
 
+// SetupLogging initializes logging framework
 func SetupLogging() {
 
 	cfg := GetConfig()
@@ -31,12 +32,14 @@ func SetupLogging() {
 	}
 }
 
+// CreateDefaultConfig creates a config map with the hardcoded internal defaults.
 func CreateDefaultConfig() ConfigMap {
 	return ConfigMap{
 		Log: LogMap{
 			Level: "info",
 		},
 		BindAddr: ":8080",
+		Jobs:     JobMap{},
 	}
 }
 
@@ -45,12 +48,14 @@ func setupFlags() {
 
 	flag.String("bindAddr", cfg.BindAddr, "IP Address to bind to listen for Prometheus scrapes")
 	flag.String("log.level", cfg.Log.Level, "Logging level")
+	flag.StringSlice("jobs.register", []string{}, "A list of job labels to register at startup. Can be specified multiple times")
 
 	if err := viper.BindPFlags(flag.CommandLine); err != nil {
 		log.Fatal(err)
 	}
 }
 
+// LoadConfig loads the configuration from Environment Variables and CLI flags and merge with hardcoded internal defaults.
 func LoadConfig() error {
 	flag.Parse()
 
@@ -67,6 +72,7 @@ func LoadConfig() error {
 	}
 }
 
+// GetConfig gets the parsed, final configuration.
 func GetConfig() ConfigMap {
 	cfg := CreateDefaultConfig()
 	err := viper.Unmarshal(&cfg)
@@ -77,16 +83,24 @@ func GetConfig() ConfigMap {
 }
 
 type (
+	// ConfigMap is the root config map
 	ConfigMap struct {
 		Log      LogMap
 		BindAddr string
+		Jobs     JobMap
 	}
+	// LogMap contains config for logging
 	LogMap struct {
 		Level     string
 		Formatter string
 	}
+	// JobMap contains values for prometheus "jobs"
+	JobMap struct {
+		Register []string
+	}
 )
 
+// LogrusHandler implements a Gin HandlerFunc that logs the request with logrus instead of Gin builtin logger.
 func LogrusHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Keys = make(map[string]interface{})
@@ -117,6 +131,7 @@ func LogrusHandler() gin.HandlerFunc {
 	}
 }
 
+// GetOrDefault gets the value of the given map by key. If the value is nil or not found, defaultValue is returned.
 func GetOrDefault(keys map[string]interface{}, key string, defaultValue interface{}) interface{} {
 	var value = keys[key]
 	if value == nil {
@@ -140,10 +155,12 @@ func filterAndCombineLoggingKeys(fields log.Fields, keys map[string]interface{})
 	return fields
 }
 
+// SetLogLevel sets the log level of the Gin HTTP context (takes effect when being logged)
 func SetLogLevel(c *gin.Context, level log.Level) {
 	c.Keys["log_level"] = level
 }
 
+// SetLog sets the log level and message of the Gin HTTP context (takes effect when being logged)
 func SetLog(c *gin.Context, level log.Level, message string) {
 	c.Keys["log_level"] = level
 	if message != "" {
@@ -151,6 +168,7 @@ func SetLog(c *gin.Context, level log.Level, message string) {
 	}
 }
 
+// SetLogWithFields sets the log level, message and fields of the Gin HTTP context (takes effect when being logged)
 func SetLogWithFields(c *gin.Context, level log.Level, message string, fields log.Fields) {
 	c.Keys["log_level"] = level
 	if message != "" {
@@ -159,4 +177,16 @@ func SetLogWithFields(c *gin.Context, level log.Level, message string, fields lo
 	for key, _ := range fields {
 		c.Keys[key] = fields[key]
 	}
+}
+
+// SetError sets the error log level, message and fields of the Gin HTTP context (takes effect when being logged)
+func SetError(c *gin.Context, message string, err error, fields log.Fields) {
+	c.Keys["log_level"] = log.ErrorLevel
+	if message != "" {
+		c.Keys["log_message"] = message
+	}
+	for key, _ := range fields {
+		c.Keys[key] = fields[key]
+	}
+	c.Keys["error"] = err
 }

@@ -12,10 +12,11 @@ endif::[]
 
 ifdef::status[]
 image:https://img.shields.io/github/workflow/status/ccremer/znapzend-exporter/Test[Build,link=https://github.com/ccremer/znapzend-exporter/actions?query=workflow%3ATest]
+image:https://img.shields.io/codeclimate/maintainability/ccremer/znapzend-exporter[Maintainability,link=https://codeclimate.com/github/ccremer/znapzend-exporter]
+image:https://img.shields.io/codeclimate/coverage/ccremer/znapzend-exporter[Tests,link=https://codeclimate.com/github/ccremer/znapzend-exporter]
 image:https://img.shields.io/github/v/release/ccremer/znapzend-exporter[Releases,link=https://github.com/ccremer/znapzend-exporter/releases]
 image:https://img.shields.io/github/license/ccremer/znapzend-exporter[License,link=https://github.com/ccremer/znapzend-exporter/blob/master/LICENSE]
 image:https://img.shields.io/docker/pulls/braindoctor/znapzend-exporter[Docker image,link=https://hub.docker.com/r/braindoctor/znapzend-exporter]
-image:https://img.shields.io/codeclimate/maintainability/ccremer/znapzend-exporter[Maintainability,link=https://codeclimate.com/github/ccremer/znapzend-exporter]
 endif::[]
 
 == About
