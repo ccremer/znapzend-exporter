@@ -58,6 +58,9 @@ func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
 	p := j.Parameters
 	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
 	if err != nil {
+		SetError(j.Context, "Invalid job label", err, log.Fields{
+			"job": p.JobName,
+		})
 		return err
 	}
 	gauge.Set(1)
@@ -74,4 +77,37 @@ func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
 }
 
 func (j *JobContext) ResetMetricIf(condition bool, vec *prometheus.GaugeVec) error {
+	if !condition {
+		return nil
+	}
+	p := j.Parameters
+	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
+	if err != nil {
+		SetError(j.Context, "Invalid job label", err, log.Fields{
+			"job": p.JobName,
+		})
+		return err
+	}
+	gauge.Set(0)
 	return nil
+}
+
+func RegisterMetric(label string) error {
+	logEvent := log.WithField("label", label)
+	for _, vec := range metricVector {
+		if gauge, err := vec.GetMetricWithLabelValues(label); err != nil {
+			return err
+		} else {
+			gauge.Set(0)
+			logEvent.WithField("metric", gauge.Desc().String()).Debug("Registered metric.")
+		}
+	}
+	return nil
+}
+
+func UnregisterMetric(label string) {
+	for _, vec := range metricVector {
+		vec.DeleteLabelValues(label)
+	}
+	log.WithField("label", label).Debug("Unregistered metric.")
+}

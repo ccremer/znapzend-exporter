@@ -18,6 +18,7 @@ type (
 		ResetPreSend  bool          `binding:"-"`
 		ResetPostSend bool          `binding:"-"`
 		ResetAfter    time.Duration `binding:"-"`
+		AutoReset     bool          `binding:"-"`
 	}
 )
 
@@ -30,8 +31,9 @@ func handlePreSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	job.SetMetric(preSnapMetric, job.Parameters.ResetPreSnap)
-
+	if err := job.SetMetric(preSnapMetric); err != nil {
+		return
+	}
 }
 
 func handlePostSnap(context *gin.Context) {
@@ -39,8 +41,74 @@ func handlePostSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	job.SetMetric(preSnapMetric, job.Parameters.ResetPostSnap)
+	if err := job.SetMetric(postSnapMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+		return
+	}
+}
 
+func handlePreSend(context *gin.Context) {
+	job, err := NewJobContext(context)
+	if err != nil {
+		return
+	}
+	if err := job.SetMetric(preSendMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
+		return
+	}
+}
+
+func handlePostSend(context *gin.Context) {
+	job, err := NewJobContext(context)
+	if err != nil {
+		return
+	}
+	if err := job.SetMetric(postSendMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
+		return
+	}
+	if err := job.ResetMetricIf(job.Parameters.ResetPreSend, preSendMetric); err != nil {
+		return
+	}
+}
+
+func handleRegister(context *gin.Context) {
+	job, err := NewJobContext(context)
+	if err != nil {
+		return
+	}
+	if err := RegisterMetric(job.Parameters.JobName); err != nil {
+		SetLogWithFields(context, log.WarnLevel, "Could not register metric.", log.Fields{
+			"error": err,
+		})
+		context.JSON(http.StatusBadRequest, gin.H{
+			"status": "failed",
+			"job":    job.Parameters.JobName,
+			"error":  err.Error(),
+		})
+	}
+	context.JSON(http.StatusOK, gin.H{"status": "registered", "job": job.Parameters.JobName})
+}
+
+func handleUnregister(context *gin.Context) {
+	job, err := NewJobContext(context)
+	if err != nil {
+		return
+	}
+	UnregisterMetric(job.Parameters.JobName)
+	context.JSON(http.StatusOK, gin.H{"status": "unregistered", "job": job.Parameters.JobName})
 }
 
 func handleMetrics(context *gin.Context) {
@@ -64,8 +132,8 @@ func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 	if err := context.ShouldBindQuery(&p); err != nil {
 		return p, err
 	}
-	SetLogWithFields(context, log.DebugLevel, "Validated Input Data", log.Fields{
+	log.WithFields(log.Fields{
 		"parameters": p,
-	})
+	}).Debug("Validated Input Data.")
 	return p, nil
 }
