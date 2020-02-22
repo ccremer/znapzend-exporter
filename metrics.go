@@ -18,8 +18,8 @@ var (
 	}, []string{"job"})
 	postSnapMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "presnap_command_finished",
-		Help:      "whether the command to run after zfs snapshot was started",
+		Name:      "postsnap_command_finished",
+		Help:      "whether the command to run after zfs snapshot was finished",
 	}, []string{"job"})
 	preSendMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
@@ -28,9 +28,10 @@ var (
 	}, []string{"job"})
 	postSendMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Namespace: namespace,
-		Name:      "presend_command_finished",
-		Help:      "whether the command to run after zfs send was started",
+		Name:      "postsend_command_finished",
+		Help:      "whether the command to run after zfs send was finished",
 	}, []string{"job"})
+	metricVector = []*prometheus.GaugeVec{preSnapMetric, postSnapMetric, preSendMetric, postSendMetric}
 )
 
 type (
@@ -53,14 +54,14 @@ func NewJobContext(c *gin.Context) (*JobContext, error) {
 	}
 }
 
-func (j *JobContext) SetMetric(vec *prometheus.GaugeVec, reset bool) error {
+func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
 	p := j.Parameters
 	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
 	if err != nil {
 		return err
 	}
 	gauge.Set(1)
-	if reset {
+	if p.AutoReset {
 		go func() {
 			logEntry := log.WithFields(log.Fields{"job": p.JobName,})
 			logEntry.WithField("delay", p.ResetAfter).Debug("Delaying job reset.")
@@ -71,3 +72,6 @@ func (j *JobContext) SetMetric(vec *prometheus.GaugeVec, reset bool) error {
 	}
 	return nil
 }
+
+func (j *JobContext) ResetMetricIf(condition bool, vec *prometheus.GaugeVec) error {
+	return nil
