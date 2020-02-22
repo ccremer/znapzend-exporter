@@ -37,6 +37,7 @@ func CreateDefaultConfig() ConfigMap {
 			Level: "info",
 		},
 		BindAddr: ":8080",
+		Jobs:     JobMap{},
 	}
 }
 
@@ -45,6 +46,7 @@ func setupFlags() {
 
 	flag.String("bindAddr", cfg.BindAddr, "IP Address to bind to listen for Prometheus scrapes")
 	flag.String("log.level", cfg.Log.Level, "Logging level")
+	flag.StringSlice("jobs.register", []string{}, "A list of job labels to register at startup. Can be specified multiple times")
 
 	if err := viper.BindPFlags(flag.CommandLine); err != nil {
 		log.Fatal(err)
@@ -80,10 +82,14 @@ type (
 	ConfigMap struct {
 		Log      LogMap
 		BindAddr string
+		Jobs     JobMap
 	}
 	LogMap struct {
 		Level     string
 		Formatter string
+	}
+	JobMap struct {
+		Register []string
 	}
 )
 
@@ -159,4 +165,15 @@ func SetLogWithFields(c *gin.Context, level log.Level, message string, fields lo
 	for key, _ := range fields {
 		c.Keys[key] = fields[key]
 	}
+}
+
+func SetError(c *gin.Context, message string, err error, fields log.Fields) {
+	c.Keys["log_level"] = log.ErrorLevel
+	if message != "" {
+		c.Keys["log_message"] = message
+	}
+	for key, _ := range fields {
+		c.Keys[key] = fields[key]
+	}
+	c.Keys["error"] = err
 }

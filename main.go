@@ -44,6 +44,13 @@ func main() {
 	if log.GetLevel() != log.DebugLevel {
 		gin.SetMode(gin.ReleaseMode)
 	}
+
+	for _, job := range cfg.Jobs.Register {
+		if err := RegisterMetric(job); err != nil {
+			log.WithField("label", job).WithError(err).Warn("Failed to register job.")
+		}
+	}
+
 	r := SetupRouter()
 	err := r.Run(cfg.BindAddr)
 	log.WithError(err).Fatal("Shutting down.")
