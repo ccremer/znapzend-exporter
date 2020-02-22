@@ -44,7 +44,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 				Parameters: tt.fields.Parameters,
 				Context:    tt.fields.Context,
 			}
-			if err := j.SetMetric(tt.args.vec); (err != nil) != tt.wantErr {
+			if err := j.setMetric(tt.args.vec); (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSendMetric))
@@ -97,7 +97,7 @@ func TestJobContext_ResetMetricIf(t *testing.T) {
 				Parameters: tt.fields.Parameters,
 				Context:    tt.fields.Context,
 			}
-			if err := j.ResetMetricIf(tt.args.condition, tt.args.vec); (err != nil) != tt.wantErr {
+			if err := j.resetMetricIf(tt.args.condition, tt.args.vec); (err != nil) != tt.wantErr {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.EqualValues(t, tt.expected, testutil.ToFloat64(gauge))

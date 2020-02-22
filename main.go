@@ -56,6 +56,7 @@ func main() {
 	log.WithError(err).Fatal("Shutting down.")
 }
 
+// SetupRouter initializes Gin with the handlers.
 func SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
@@ -64,7 +65,7 @@ func SetupRouter() *gin.Engine {
 	)
 	r.GET("/presnap/*job", handlePreSnap)
 	r.GET("/postsnap/*job", handlePostSnap)
-	r.GET("/presend/*job",handlePreSend)
+	r.GET("/presend/*job", handlePreSend)
 	r.GET("/postsend/*job", handlePostSend)
 	r.GET("/register/*job", handleRegister)
 	r.GET("/unregister/*job", handleUnregister)

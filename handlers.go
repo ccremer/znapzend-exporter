@@ -11,6 +11,7 @@ import (
 )
 
 type (
+	// Parameters contains query parameters that modify the behaviour of the exporter
 	Parameters struct {
 		JobName       string
 		ResetPreSnap  bool          `binding:"-"`
@@ -31,7 +32,7 @@ func handlePreSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.SetMetric(preSnapMetric); err != nil {
+	if err := job.setMetric(preSnapMetric); err != nil {
 		return
 	}
 }
@@ -41,10 +42,10 @@ func handlePostSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.SetMetric(postSnapMetric); err != nil {
+	if err := job.setMetric(postSnapMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
 		return
 	}
 }
@@ -54,13 +55,13 @@ func handlePreSend(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.SetMetric(preSendMetric); err != nil {
+	if err := job.setMetric(preSendMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
 		return
 	}
 }
@@ -70,16 +71,16 @@ func handlePostSend(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.SetMetric(postSendMetric); err != nil {
+	if err := job.setMetric(postSendMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
 		return
 	}
-	if err := job.ResetMetricIf(job.Parameters.ResetPreSend, preSendMetric); err != nil {
+	if err := job.resetMetricIf(job.Parameters.ResetPreSend, preSendMetric); err != nil {
 		return
 	}
 }
@@ -124,6 +125,7 @@ func handleLiveness(context *gin.Context) {
 	})
 }
 
+// ParseAndValidateInput parses the query parameters from a given Gin HTTP request. Returns an error upon constraint violations.
 func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 	p := Parameters{}
 	if p.JobName = strings.TrimPrefix(context.Param("job"), "/"); p.JobName == "" {

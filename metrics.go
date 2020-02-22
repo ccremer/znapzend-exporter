@@ -35,26 +35,28 @@ var (
 )
 
 type (
+	// JobContext wraps the parsed query parameters and the HTTP request context.
 	JobContext struct {
 		Parameters Parameters
 		Context    *gin.Context
 	}
 )
 
+// NewJobContext parses the input data. On errors, the response is already set and logged.
 func NewJobContext(c *gin.Context) (*JobContext, error) {
-	if p, err := ParseAndValidateInput(c); err != nil {
+	p, err := ParseAndValidateInput(c)
+	if err != nil {
 		SetLog(c, log.ErrorLevel, err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return nil, err
-	} else {
-		return &JobContext{
-			Parameters: p,
-			Context:    nil,
-		}, nil
 	}
+	return &JobContext{
+		Parameters: p,
+		Context:    c,
+	}, nil
 }
 
-func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
+func (j *JobContext) setMetric(vec *prometheus.GaugeVec) error {
 	p := j.Parameters
 	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
 	if err != nil {
@@ -66,7 +68,7 @@ func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
 	gauge.Set(1)
 	if p.AutoReset {
 		go func() {
-			logEntry := log.WithFields(log.Fields{"job": p.JobName,})
+			logEntry := log.WithFields(log.Fields{"job": p.JobName})
 			logEntry.WithField("delay", p.ResetAfter).Debug("Delaying job reset.")
 			time.Sleep(p.ResetAfter)
 			vec.WithLabelValues(p.JobName).Set(0)
@@ -76,7 +78,7 @@ func (j *JobContext) SetMetric(vec *prometheus.GaugeVec) error {
 	return nil
 }
 
-func (j *JobContext) ResetMetricIf(condition bool, vec *prometheus.GaugeVec) error {
+func (j *JobContext) resetMetricIf(condition bool, vec *prometheus.GaugeVec) error {
 	if !condition {
 		return nil
 	}
@@ -92,19 +94,22 @@ func (j *JobContext) ResetMetricIf(condition bool, vec *prometheus.GaugeVec) err
 	return nil
 }
 
+// RegisterMetric registers 4 new gauges with the given label (preSnap, postSnap, preSend, postSend) and initializes the
+// values with 0.
 func RegisterMetric(label string) error {
 	logEvent := log.WithField("label", label)
 	for _, vec := range metricVector {
-		if gauge, err := vec.GetMetricWithLabelValues(label); err != nil {
+		gauge, err := vec.GetMetricWithLabelValues(label)
+		if err != nil {
 			return err
-		} else {
-			gauge.Set(0)
-			logEvent.WithField("metric", gauge.Desc().String()).Debug("Registered metric.")
 		}
+		gauge.Set(0)
+		logEvent.WithField("metric", gauge.Desc().String()).Debug("Registered metric.")
 	}
 	return nil
 }
 
+// UnregisterMetric deletes 4 gauges with the given label, if found.
 func UnregisterMetric(label string) {
 	for _, vec := range metricVector {
 		vec.DeleteLabelValues(label)
