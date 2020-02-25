@@ -48,9 +48,12 @@ func main() {
 	for _, job := range cfg.Jobs.Register {
 		if err := RegisterMetric(job); err != nil {
 			log.WithField("label", job).WithError(err).Warn("Failed to register job.")
+		} else {
+			log.WithField("label", job).Info("Registered job.")
 		}
 	}
 
+	log.WithField("port", cfg.BindAddr).Info("Starting webserver.")
 	r := SetupRouter()
 	err := r.Run(cfg.BindAddr)
 	log.WithError(err).Fatal("Shutting down.")
