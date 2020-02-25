@@ -66,6 +66,7 @@ func SetupRouter() *gin.Engine {
 		LogrusHandler(),
 		gin.Recovery(),
 	)
+	r.GET("/", handleRoot)
 	r.GET("/presnap/*job", handlePreSnap)
 	r.GET("/postsnap/*job", handlePostSnap)
 	r.GET("/presend/*job", handlePreSend)

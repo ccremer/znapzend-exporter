@@ -125,6 +125,14 @@ func handleLiveness(context *gin.Context) {
 	})
 }
 
+func handleRoot(context *gin.Context) {
+	SetLogLevel(context, log.DebugLevel)
+	context.JSON(http.StatusOK, gin.H{
+		"message": "exporter reachable. You might want to check /metrics",
+		"version": version,
+	})
+}
+
 // ParseAndValidateInput parses the query parameters from a given Gin HTTP request. Returns an error upon constraint violations.
 func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 	p := Parameters{}
