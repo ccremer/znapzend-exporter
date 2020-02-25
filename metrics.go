@@ -66,11 +66,11 @@ func (j *JobContext) setMetric(vec *prometheus.GaugeVec) error {
 		return err
 	}
 	gauge.Set(1)
-	if p.AutoReset {
+	if p.SelfResetAfter > 0 {
 		go func() {
 			logEntry := log.WithFields(log.Fields{"job": p.JobName})
-			logEntry.WithField("delay", p.ResetAfter).Debug("Delaying job reset.")
-			time.Sleep(p.ResetAfter)
+			logEntry.WithField("delay", p.SelfResetAfter).Debug("Delaying job reset.")
+			time.Sleep(p.SelfResetAfter)
 			vec.WithLabelValues(p.JobName).Set(0)
 			logEntry.Info("Reset gauge.")
 		}()

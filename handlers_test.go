@@ -56,11 +56,11 @@ func TestParseAndValidateInput(t *testing.T) {
 					},
 					Keys: make(map[string]interface{}),
 				},
-				query: "/tank?ResetAfter=10s",
+				query: "/tank?SelfResetAfter=10s",
 			},
 			want: Parameters{
-				JobName:    "tank",
-				ResetAfter: 10 * time.Second,
+				JobName:        "tank",
+				SelfResetAfter: 10 * time.Second,
 			},
 		},
 		{

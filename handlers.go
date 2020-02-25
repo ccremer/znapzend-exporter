@@ -13,13 +13,12 @@ import (
 type (
 	// Parameters contains query parameters that modify the behaviour of the exporter
 	Parameters struct {
-		JobName       string
-		ResetPreSnap  bool          `binding:"-"`
-		ResetPostSnap bool          `binding:"-"`
-		ResetPreSend  bool          `binding:"-"`
-		ResetPostSend bool          `binding:"-"`
-		ResetAfter    time.Duration `binding:"-"`
-		AutoReset     bool          `binding:"-"`
+		JobName        string
+		ResetPreSnap   bool          `binding:"-"`
+		ResetPostSnap  bool          `binding:"-"`
+		ResetPreSend   bool          `binding:"-"`
+		ResetPostSend  bool          `binding:"-"`
+		SelfResetAfter time.Duration `binding:"-"`
 	}
 )
 

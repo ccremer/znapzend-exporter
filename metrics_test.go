@@ -33,7 +33,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 		{
 			name: "ShouldResetMetric",
 			fields: fields{
-				Parameters: Parameters{JobName: "pool", AutoReset: true, ResetAfter: time.Second},
+				Parameters: Parameters{JobName: "pool", SelfResetAfter: time.Second},
 			},
 			args: args{vec: preSendMetric},
 		},
@@ -48,7 +48,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
 			}
 			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSendMetric))
-			if tt.fields.Parameters.AutoReset {
+			if tt.fields.Parameters.SelfResetAfter > 0 {
 				time.Sleep(1200 * time.Millisecond)
 				assert.EqualValues(t, float64(0), testutil.ToFloat64(preSendMetric))
 			}
