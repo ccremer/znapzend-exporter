@@ -55,7 +55,7 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank?ResetPreSnap=asdf",
 			},
-			want:    Parameters{},
+			want:    Parameters{JobName: "tank"},
 			wantErr: true,
 		},
 		{
