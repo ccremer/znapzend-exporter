@@ -29,7 +29,6 @@ func TestParseAndValidateInput(t *testing.T) {
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank/backup"},
 					},
-					Keys: make(map[string]interface{}),
 				},
 				query: "/tank/backup",
 			},
@@ -40,7 +39,6 @@ func TestParseAndValidateInput(t *testing.T) {
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{},
-					Keys:   make(map[string]interface{}),
 				},
 				query: "/",
 			},
@@ -48,19 +46,31 @@ func TestParseAndValidateInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "ShouldParse_ResetAfter",
+			name: "ShouldFail_AtParsingParameters",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank"},
 					},
-					Keys: make(map[string]interface{}),
 				},
-				query: "/tank?ResetAfter=10s",
+				query: "/tank?ResetPreSnap=asdf",
+			},
+			want:    Parameters{JobName: "tank"},
+			wantErr: true,
+		},
+		{
+			name: "ShouldParse_SelfResetAfter",
+			args: args{
+				context: &gin.Context{
+					Params: []gin.Param{
+						{Key: "job", Value: "/tank"},
+					},
+				},
+				query: "/tank?SelfResetAfter=10s",
 			},
 			want: Parameters{
-				JobName:    "tank",
-				ResetAfter: 10 * time.Second,
+				JobName:        "tank",
+				SelfResetAfter: 10 * time.Second,
 			},
 		},
 		{
@@ -70,7 +80,6 @@ func TestParseAndValidateInput(t *testing.T) {
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank"},
 					},
-					Keys: make(map[string]interface{}),
 				},
 				query: "/tank?ResetPreSnap=true&ResetPostSnap=true&ResetPreSend=true&ResetPostSend=true",
 			},

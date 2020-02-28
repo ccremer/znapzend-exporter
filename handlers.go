@@ -13,13 +13,12 @@ import (
 type (
 	// Parameters contains query parameters that modify the behaviour of the exporter
 	Parameters struct {
-		JobName       string
-		ResetPreSnap  bool          `binding:"-"`
-		ResetPostSnap bool          `binding:"-"`
-		ResetPreSend  bool          `binding:"-"`
-		ResetPostSend bool          `binding:"-"`
-		ResetAfter    time.Duration `binding:"-"`
-		AutoReset     bool          `binding:"-"`
+		JobName        string
+		ResetPreSnap   bool          `binding:"-"`
+		ResetPostSnap  bool          `binding:"-"`
+		ResetPreSend   bool          `binding:"-"`
+		ResetPostSend  bool          `binding:"-"`
+		SelfResetAfter time.Duration `binding:"-"`
 	}
 )
 
@@ -27,89 +26,69 @@ var (
 	promHandler = promhttp.Handler()
 )
 
+const (
+	parameterKey = "parameters"
+)
+
 func handlePreSnap(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	if err := job.setMetric(preSnapMetric); err != nil {
-		return
-	}
+	job := context.MustGet(parameterKey).(Parameters)
+	job.setMetric(preSnapMetric)
+	ResetMetrics(job.JobName,
+		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, preSendMetric},
+		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePostSnap(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	if err := job.setMetric(postSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
+	job := context.MustGet(parameterKey).(Parameters)
+	job.setMetric(postSnapMetric)
+	ResetMetrics(job.JobName,
+		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, preSendMetric},
+		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePreSend(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	if err := job.setMetric(preSendMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
-		return
-	}
+	job := context.MustGet(parameterKey).(Parameters)
+	job.setMetric(preSendMetric)
+	ResetMetrics(job.JobName,
+		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePostSend(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	if err := job.setMetric(postSendMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSend, preSendMetric); err != nil {
-		return
-	}
+	job := context.MustGet(parameterKey).(Parameters)
+	job.setMetric(postSendMetric)
+	ResetMetrics(job.JobName,
+		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, preSendMetric},
+	)
 }
 
 func handleRegister(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	if err := RegisterMetric(job.Parameters.JobName); err != nil {
+	job := context.MustGet(parameterKey).(Parameters)
+	if err := RegisterMetric(job.JobName); err != nil {
 		SetLogWithFields(context, log.WarnLevel, "Could not register metric.", log.Fields{
 			"error": err,
 		})
 		context.JSON(http.StatusBadRequest, gin.H{
 			"status": "failed",
-			"job":    job.Parameters.JobName,
+			"job":    job.JobName,
 			"error":  err.Error(),
 		})
 	}
-	context.JSON(http.StatusOK, gin.H{"status": "registered", "job": job.Parameters.JobName})
+	context.JSON(http.StatusOK, gin.H{"status": "registered", "job": job.JobName})
 }
 
 func handleUnregister(context *gin.Context) {
-	job, err := NewJobContext(context)
-	if err != nil {
-		return
-	}
-	UnregisterMetric(job.Parameters.JobName)
-	context.JSON(http.StatusOK, gin.H{"status": "unregistered", "job": job.Parameters.JobName})
+	job := context.MustGet(parameterKey).(Parameters)
+	UnregisterMetric(job.JobName)
+	context.JSON(http.StatusOK, gin.H{"status": "unregistered", "job": job.JobName})
 }
 
 func handleMetrics(context *gin.Context) {
@@ -118,10 +97,18 @@ func handleMetrics(context *gin.Context) {
 }
 
 // For now, only one endpoint is required.
-func handleLiveness(context *gin.Context) {
+func handleHealthcheck(context *gin.Context) {
 	SetLogLevel(context, log.DebugLevel)
 	context.JSON(http.StatusOK, gin.H{
 		"message": "If you can reach this, I'm alive!",
+	})
+}
+
+func handleRoot(context *gin.Context) {
+	SetLogLevel(context, log.DebugLevel)
+	context.JSON(http.StatusOK, gin.H{
+		"message": "exporter reachable. You might want to check /metrics",
+		"version": version,
 	})
 }
 
@@ -138,4 +125,38 @@ func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 		"parameters": p,
 	}).Debug("Validated Input Data.")
 	return p, nil
+}
+
+// InputValidationHandle returns a Gin handler that parses the input of the request and puts the parsed content into
+// the Gin context keys for later retrieval.
+func InputValidationHandle() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		parameters, err := ParseAndValidateInput(c)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": err.Error(),
+			})
+			SetError(c, "Validation failed.", err, log.Fields{})
+			return
+		}
+
+		c.Set("parameters", parameters)
+	}
+}
+
+// ErrorHandle returns a Gin handler that prints the errors from c.Errors in JSON. Does nothing if the response was
+// already written or if no errors were added to the context.
+func ErrorHandle() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Next()
+		err := c.Errors.Last()
+		if c.Writer.Written() {
+			return
+		}
+		if err != nil {
+			c.JSON(c.Writer.Status(), gin.H{
+				"errors": c.Errors.Errors(),
+			})
+		}
+	}
 }

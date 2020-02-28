@@ -48,9 +48,12 @@ func main() {
 	for _, job := range cfg.Jobs.Register {
 		if err := RegisterMetric(job); err != nil {
 			log.WithField("label", job).WithError(err).Warn("Failed to register job.")
+		} else {
+			log.WithField("label", job).Info("Registered job.")
 		}
 	}
 
+	log.WithField("port", cfg.BindAddr).Info("Starting webserver.")
 	r := SetupRouter()
 	err := r.Run(cfg.BindAddr)
 	log.WithError(err).Fatal("Shutting down.")
@@ -61,16 +64,19 @@ func SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
 		LogrusHandler(),
+		ErrorHandle(),
+		InputValidationHandle(),
 		gin.Recovery(),
 	)
+	r.GET("/", handleRoot)
 	r.GET("/presnap/*job", handlePreSnap)
 	r.GET("/postsnap/*job", handlePostSnap)
 	r.GET("/presend/*job", handlePreSend)
 	r.GET("/postsend/*job", handlePostSend)
 	r.GET("/register/*job", handleRegister)
 	r.GET("/unregister/*job", handleUnregister)
-	r.GET("/health/ready", handleLiveness)
-	r.GET("/health/alive", handleLiveness)
+	r.GET("/health/ready", handleHealthcheck)
+	r.GET("/health/alive", handleHealthcheck)
 	r.GET("/metrics", handleMetrics)
 	return r
 }
