@@ -67,9 +67,8 @@ func LoadConfig() error {
 	if err == nil {
 		viper.SetConfigType("ser")
 		return viper.ReadConfig(bytes.NewBuffer(ser))
-	} else {
-		return err
 	}
+	return err
 }
 
 // GetConfig gets the parsed, final configuration.
@@ -103,30 +102,23 @@ type (
 // LogrusHandler implements a Gin HandlerFunc that logs the request with logrus instead of Gin builtin logger.
 func LogrusHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Keys = make(map[string]interface{})
 		startTime := time.Now()
 
 		// Processing request
 		c.Next()
 
 		logLevel := GetOrDefault(c.Keys, "log_level", log.InfoLevel).(log.Level)
-		if c.Keys["log_skip"] == true {
+		if c.GetBool("log_skip") {
 			return
 		}
 		message := GetOrDefault(c.Keys, "log_message", "").(string)
 
-		endTime := time.Now()
-		latencyTime := endTime.Sub(startTime)
-		reqMethod := c.Request.Method
-		reqUri := c.Request.RequestURI
-		statusCode := c.Writer.Status()
-		clientIP := c.ClientIP()
 		log.WithFields(filterAndCombineLoggingKeys(log.Fields{
-			"status_code":  statusCode,
-			"latency_time": latencyTime,
-			"client_ip":    clientIP,
-			"req_method":   reqMethod,
-			"req_uri":      reqUri,
+			"status_code":  c.Writer.Status(),
+			"latency_time": time.Now().Sub(startTime),
+			"client_ip":    c.ClientIP(),
+			"req_method":   c.Request.Method,
+			"req_uri":      c.Request.RequestURI,
 		}, c.Keys)).Log(logLevel, message)
 	}
 }
@@ -136,13 +128,12 @@ func GetOrDefault(keys map[string]interface{}, key string, defaultValue interfac
 	var value = keys[key]
 	if value == nil {
 		return defaultValue
-	} else {
-		return value
 	}
+	return value
 }
 
 func filterAndCombineLoggingKeys(fields log.Fields, keys map[string]interface{}) log.Fields {
-	for key, _ := range keys {
+	for key := range keys {
 		switch key {
 		case "log_message":
 		case "log_level":
@@ -171,7 +162,7 @@ func SetLogWithFields(c *gin.Context, level log.Level, message string, fields lo
 	if message != "" {
 		c.Set("log_message", message)
 	}
-	for key, _ := range fields {
+	for key := range fields {
 		c.Set(key, fields[key])
 	}
 }
