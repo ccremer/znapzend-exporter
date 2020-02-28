@@ -48,7 +48,7 @@ func TestParseAndValidateInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "ShouldParse_ResetAfter",
+			name: "ShouldParse_SelfResetAfter",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{

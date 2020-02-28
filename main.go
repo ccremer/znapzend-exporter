@@ -73,8 +73,8 @@ func SetupRouter() *gin.Engine {
 	r.GET("/postsend/*job", handlePostSend)
 	r.GET("/register/*job", handleRegister)
 	r.GET("/unregister/*job", handleUnregister)
-	r.GET("/health/ready", handleLiveness)
-	r.GET("/health/alive", handleLiveness)
+	r.GET("/health/ready", handleHealthcheck)
+	r.GET("/health/alive", handleHealthcheck)
 	r.GET("/metrics", handleMetrics)
 	return r
 }

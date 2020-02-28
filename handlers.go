@@ -117,7 +117,7 @@ func handleMetrics(context *gin.Context) {
 }
 
 // For now, only one endpoint is required.
-func handleLiveness(context *gin.Context) {
+func handleHealthcheck(context *gin.Context) {
 	SetLogLevel(context, log.DebugLevel)
 	context.JSON(http.StatusOK, gin.H{
 		"message": "If you can reach this, I'm alive!",
