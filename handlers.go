@@ -31,9 +31,12 @@ func handlePreSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.setMetric(preSnapMetric); err != nil {
-		return
-	}
+	job.setMetric(preSnapMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.Parameters.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPreSend, preSendMetric},
+		ResetMetricTuple{job.Parameters.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePostSnap(context *gin.Context) {
@@ -41,12 +44,12 @@ func handlePostSnap(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.setMetric(postSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
+	job.setMetric(postSnapMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.Parameters.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPreSend, preSendMetric},
+		ResetMetricTuple{job.Parameters.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePreSend(context *gin.Context) {
@@ -54,15 +57,12 @@ func handlePreSend(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.setMetric(preSendMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
-		return
-	}
+	job.setMetric(preSendMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.Parameters.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPostSend, postSendMetric},
+	)
 }
 
 func handlePostSend(context *gin.Context) {
@@ -70,18 +70,12 @@ func handlePostSend(context *gin.Context) {
 	if err != nil {
 		return
 	}
-	if err := job.setMetric(postSendMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSnap, preSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPostSnap, postSnapMetric); err != nil {
-		return
-	}
-	if err := job.resetMetricIf(job.Parameters.ResetPreSend, preSendMetric); err != nil {
-		return
-	}
+	job.setMetric(postSendMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.Parameters.ResetPreSnap, preSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPostSnap, postSnapMetric},
+		ResetMetricTuple{job.Parameters.ResetPreSend, preSendMetric},
+	)
 }
 
 func handleRegister(context *gin.Context) {

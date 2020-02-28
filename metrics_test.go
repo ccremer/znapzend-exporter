@@ -44,9 +44,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 				Parameters: tt.fields.Parameters,
 				Context:    tt.fields.Context,
 			}
-			if err := j.setMetric(tt.args.vec); (err != nil) != tt.wantErr {
-				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
-			}
+			j.setMetric(tt.args.vec)
 			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSendMetric))
 			if tt.fields.Parameters.SelfResetAfter > 0 {
 				time.Sleep(1200 * time.Millisecond)
@@ -56,20 +54,18 @@ func TestJobContext_SetMetric(t *testing.T) {
 	}
 }
 
-func TestJobContext_ResetMetricIf(t *testing.T) {
+func TestJobContext_ResetMetrics(t *testing.T) {
 	type fields struct {
 		Parameters Parameters
 		Context    *gin.Context
 	}
 	type args struct {
-		condition bool
-		vec       *prometheus.GaugeVec
+		tuples []ResetMetricTuple
 	}
 	tests := []struct {
 		name     string
 		fields   fields
 		args     args
-		wantErr  bool
 		expected float64
 	}{
 		{
@@ -77,7 +73,9 @@ func TestJobContext_ResetMetricIf(t *testing.T) {
 			fields: fields{
 				Parameters: Parameters{JobName: "tank"},
 			},
-			args:     args{vec: preSendMetric, condition: true},
+			args: args{tuples: []ResetMetricTuple{
+				{resetEnabled: true, vec: preSendMetric},
+			}},
 			expected: 0,
 		},
 		{
@@ -85,7 +83,9 @@ func TestJobContext_ResetMetricIf(t *testing.T) {
 			fields: fields{
 				Parameters: Parameters{JobName: "tank"},
 			},
-			args:     args{vec: preSendMetric},
+			args: args{tuples: []ResetMetricTuple{
+				{resetEnabled: false, vec: preSendMetric},
+			}},
 			expected: 1,
 		},
 	}
@@ -97,9 +97,7 @@ func TestJobContext_ResetMetricIf(t *testing.T) {
 				Parameters: tt.fields.Parameters,
 				Context:    tt.fields.Context,
 			}
-			if err := j.resetMetricIf(tt.args.condition, tt.args.vec); (err != nil) != tt.wantErr {
-				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
-			}
+			j.ResetMetrics(tt.args.tuples[:]...)
 			assert.EqualValues(t, tt.expected, testutil.ToFloat64(gauge))
 		})
 	}

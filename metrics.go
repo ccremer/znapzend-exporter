@@ -40,6 +40,11 @@ type (
 		Parameters Parameters
 		Context    *gin.Context
 	}
+	// ResetMetricTuple contains a gauge and its enable flag.
+	ResetMetricTuple struct {
+		resetEnabled bool
+		vec          *prometheus.GaugeVec
+	}
 )
 
 // NewJobContext parses the input data. On errors, the response is already set and logged.
@@ -56,42 +61,30 @@ func NewJobContext(c *gin.Context) (*JobContext, error) {
 	}, nil
 }
 
-func (j *JobContext) setMetric(vec *prometheus.GaugeVec) error {
+func (j *JobContext) setMetric(vec *prometheus.GaugeVec) {
 	p := j.Parameters
-	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
-	if err != nil {
-		SetError(j.Context, "Invalid job label", err, log.Fields{
-			"job": p.JobName,
-		})
-		return err
-	}
+	gauge := vec.WithLabelValues(p.JobName)
 	gauge.Set(1)
 	if p.SelfResetAfter > 0 {
 		go func() {
 			logEntry := log.WithFields(log.Fields{"job": p.JobName})
 			logEntry.WithField("delay", p.SelfResetAfter).Debug("Delaying job reset.")
 			time.Sleep(p.SelfResetAfter)
-			vec.WithLabelValues(p.JobName).Set(0)
+			gauge.Set(0)
 			logEntry.Info("Reset gauge.")
 		}()
 	}
-	return nil
 }
 
-func (j *JobContext) resetMetricIf(condition bool, vec *prometheus.GaugeVec) error {
-	if !condition {
-		return nil
+// ResetMetrics resets all given gauges to 0 if the flag is set to true. On errors the context will be set to return an
+// error to the client and skip the remaining gauges.
+func (j *JobContext) ResetMetrics(tuples ...ResetMetricTuple) {
+	for _, tuple := range tuples[:] {
+		if !tuple.resetEnabled {
+			continue
+		}
+		tuple.vec.WithLabelValues(j.Parameters.JobName).Set(0)
 	}
-	p := j.Parameters
-	gauge, err := vec.GetMetricWithLabelValues(p.JobName)
-	if err != nil {
-		SetError(j.Context, "Invalid job label", err, log.Fields{
-			"job": p.JobName,
-		})
-		return err
-	}
-	gauge.Set(0)
-	return nil
 }
 
 // RegisterMetric registers 4 new gauges with the given label (preSnap, postSnap, preSend, postSend) and initializes the
@@ -99,10 +92,7 @@ func (j *JobContext) resetMetricIf(condition bool, vec *prometheus.GaugeVec) err
 func RegisterMetric(label string) error {
 	logEvent := log.WithField("label", label)
 	for _, vec := range metricVector {
-		gauge, err := vec.GetMetricWithLabelValues(label)
-		if err != nil {
-			return err
-		}
+		gauge := vec.WithLabelValues(label)
 		gauge.Set(0)
 		logEvent.WithField("metric", gauge.Desc().String()).Debug("Registered metric.")
 	}
