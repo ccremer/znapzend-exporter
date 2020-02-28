@@ -29,7 +29,6 @@ func TestParseAndValidateInput(t *testing.T) {
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank/backup"},
 					},
-					Keys: make(map[string]interface{}),
 				},
 				query: "/tank/backup",
 			},
@@ -40,7 +39,6 @@ func TestParseAndValidateInput(t *testing.T) {
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{},
-					Keys:   make(map[string]interface{}),
 				},
 				query: "/",
 			},
@@ -54,7 +52,6 @@ func TestParseAndValidateInput(t *testing.T) {
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank"},
 					},
-					Keys: make(map[string]interface{}),
 				},
 				query: "/tank?SelfResetAfter=10s",
 			},
@@ -70,7 +67,6 @@ func TestParseAndValidateInput(t *testing.T) {
 					Params: []gin.Param{
 						{Key: "job", Value: "/tank"},
 					},
-					Keys: make(map[string]interface{}),
 				},
 				query: "/tank?ResetPreSnap=true&ResetPostSnap=true&ResetPreSend=true&ResetPostSend=true",
 			},

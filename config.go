@@ -157,36 +157,27 @@ func filterAndCombineLoggingKeys(fields log.Fields, keys map[string]interface{})
 
 // SetLogLevel sets the log level of the Gin HTTP context (takes effect when being logged)
 func SetLogLevel(c *gin.Context, level log.Level) {
-	c.Keys["log_level"] = level
+	SetLogWithFields(c, level, "", log.Fields{})
 }
 
 // SetLog sets the log level and message of the Gin HTTP context (takes effect when being logged)
 func SetLog(c *gin.Context, level log.Level, message string) {
-	c.Keys["log_level"] = level
-	if message != "" {
-		c.Keys["log_message"] = message
-	}
+	SetLogWithFields(c, level, message, log.Fields{})
 }
 
 // SetLogWithFields sets the log level, message and fields of the Gin HTTP context (takes effect when being logged)
 func SetLogWithFields(c *gin.Context, level log.Level, message string, fields log.Fields) {
-	c.Keys["log_level"] = level
+	c.Set("log_level", level)
 	if message != "" {
-		c.Keys["log_message"] = message
+		c.Set("log_message", message)
 	}
 	for key, _ := range fields {
-		c.Keys[key] = fields[key]
+		c.Set(key, fields[key])
 	}
 }
 
 // SetError sets the error log level, message and fields of the Gin HTTP context (takes effect when being logged)
 func SetError(c *gin.Context, message string, err error, fields log.Fields) {
-	c.Keys["log_level"] = log.ErrorLevel
-	if message != "" {
-		c.Keys["log_message"] = message
-	}
-	for key, _ := range fields {
-		c.Keys[key] = fields[key]
-	}
-	c.Keys["error"] = err
+	SetLogWithFields(c, log.ErrorLevel, message, fields)
+	c.Set("error", err)
 }
