@@ -46,6 +46,19 @@ func TestParseAndValidateInput(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			name: "ShouldFail_AtParsingParameters",
+			args: args{
+				context: &gin.Context{
+					Params: []gin.Param{
+						{Key: "job", Value: "/tank"},
+					},
+				},
+				query: "/tank?ResetPreSnap=asdf",
+			},
+			want:    Parameters{},
+			wantErr: true,
+		},
+		{
 			name: "ShouldParse_SelfResetAfter",
 			args: args{
 				context: &gin.Context{

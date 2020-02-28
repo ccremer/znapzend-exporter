@@ -12,7 +12,6 @@ import (
 func TestJobContext_SetMetric(t *testing.T) {
 	type fields struct {
 		Parameters Parameters
-		Context    *gin.Context
 	}
 	type args struct {
 		vec *prometheus.GaugeVec
@@ -40,11 +39,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			j := &JobContext{
-				Parameters: tt.fields.Parameters,
-				Context:    tt.fields.Context,
-			}
-			j.setMetric(tt.args.vec)
+			tt.fields.Parameters.setMetric(tt.args.vec)
 			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSendMetric))
 			if tt.fields.Parameters.SelfResetAfter > 0 {
 				time.Sleep(1200 * time.Millisecond)
@@ -93,11 +88,7 @@ func TestJobContext_ResetMetrics(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gauge := preSendMetric.WithLabelValues(tt.fields.Parameters.JobName)
 			gauge.Set(1)
-			j := &JobContext{
-				Parameters: tt.fields.Parameters,
-				Context:    tt.fields.Context,
-			}
-			j.ResetMetrics(tt.args.tuples[:]...)
+			ResetMetrics(tt.fields.Parameters.JobName, tt.args.tuples[:]...)
 			assert.EqualValues(t, tt.expected, testutil.ToFloat64(gauge))
 		})
 	}

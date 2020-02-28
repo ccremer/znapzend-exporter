@@ -64,6 +64,8 @@ func SetupRouter() *gin.Engine {
 	r := gin.New()
 	r.Use(
 		LogrusHandler(),
+		ErrorHandle(),
+		InputValidationHandle(),
 		gin.Recovery(),
 	)
 	r.GET("/", handleRoot)

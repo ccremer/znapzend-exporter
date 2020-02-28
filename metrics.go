@@ -1,11 +1,9 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 	"time"
 )
 
@@ -35,11 +33,6 @@ var (
 )
 
 type (
-	// JobContext wraps the parsed query parameters and the HTTP request context.
-	JobContext struct {
-		Parameters Parameters
-		Context    *gin.Context
-	}
 	// ResetMetricTuple contains a gauge and its enable flag.
 	ResetMetricTuple struct {
 		resetEnabled bool
@@ -47,22 +40,7 @@ type (
 	}
 )
 
-// NewJobContext parses the input data. On errors, the response is already set and logged.
-func NewJobContext(c *gin.Context) (*JobContext, error) {
-	p, err := ParseAndValidateInput(c)
-	if err != nil {
-		SetLog(c, log.ErrorLevel, err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, err
-	}
-	return &JobContext{
-		Parameters: p,
-		Context:    c,
-	}, nil
-}
-
-func (j *JobContext) setMetric(vec *prometheus.GaugeVec) {
-	p := j.Parameters
+func (p *Parameters) setMetric(vec *prometheus.GaugeVec) {
 	gauge := vec.WithLabelValues(p.JobName)
 	gauge.Set(1)
 	if p.SelfResetAfter > 0 {
@@ -76,14 +54,13 @@ func (j *JobContext) setMetric(vec *prometheus.GaugeVec) {
 	}
 }
 
-// ResetMetrics resets all given gauges to 0 if the flag is set to true. On errors the context will be set to return an
-// error to the client and skip the remaining gauges.
-func (j *JobContext) ResetMetrics(tuples ...ResetMetricTuple) {
+// ResetMetrics resets all given gauges to 0 if the flag is set to true.
+func ResetMetrics(label string, tuples ...ResetMetricTuple) {
 	for _, tuple := range tuples[:] {
 		if !tuple.resetEnabled {
 			continue
 		}
-		tuple.vec.WithLabelValues(j.Parameters.JobName).Set(0)
+		tuple.vec.WithLabelValues(label).Set(0)
 	}
 }
 
