@@ -129,8 +129,17 @@ func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
 
 // InputValidationHandle returns a Gin handler that parses the input of the request and puts the parsed content into
 // the Gin context keys for later retrieval.
-func InputValidationHandle() gin.HandlerFunc {
+func InputValidationHandle(paths ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		toValidate := false
+		for _, path := range paths {
+			if strings.HasPrefix(c.Request.URL.Path, path) {
+				toValidate = true
+			}
+		}
+		if !toValidate {
+			return
+		}
 		parameters, err := ParseAndValidateInput(c)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
