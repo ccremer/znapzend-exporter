@@ -22,10 +22,8 @@ jobs:
       with:
         path: /home/runner/go/pkg/mod
         key: go-mod-test
-    - name: Run unit test separately (until https://github.com/paambaati/codeclimate-action/issues/119 is fixed)
-      run: go test ./...
     - name: Test & Publish Code Coverage
-      uses: paambaati/codeclimate-action@v2.5.0
+      uses: paambaati/codeclimate-action@v2.5.4
       env:
         CC_TEST_REPORTER_ID: e83a1c47936e887bb37d1e37ebd3395744d4b73693a3c6e199294182be045210
       with:
