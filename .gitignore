@@ -4,3 +4,4 @@
 *.log
 .cover
 /coverage
+/c.out
