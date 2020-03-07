@@ -41,6 +41,83 @@ and this tool leverages this feature by providing a endpoint URLs for CURL reque
 . `mv $the_binary /usr/local/bin/znapzend-exporter`
 . `znapzend-exporter --help`
 
+== Usage
+
+ZnapZend allows you to specify pre/post-snapshot and pre/post-send commands that are being executed
+before and after each `ZFS snap` or `ZFS send`. We can leverage that implement a monitoring on top of
+that which we then can query Prometheus for failed backups.
+
+=== Example: Dataset monitoring
+
+Setup ZnapZend with `znapzendzetup`, so that your config could look like this:
+[source]
+----
+*** backup plan: tank/data/home ***
+           dst_0 = remote-host:backup/data/home
+      dst_0_plan = 14days=>1day,60days=>1week,12months=>1month
+    dst_0_precmd = /usr/bin/curl -sS localhost:8080/presend/tank/data/home
+    dst_0_pstcmd = /usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h
+         enabled = on
+         mbuffer = off
+    mbuffer_size = 1G
+   post_znap_cmd = /usr/bin/curl -sS localhost:8080/postsnap/tank/data/home
+    pre_znap_cmd = /usr/bin/curl -sS localhost:8080/presnap/tank/data/home
+       recursive = off
+             src = tank/data/home
+        src_plan = 14days=>1day,60days=>1week,12months=>1month
+        tsformat = %Y-%m-%d-%H%M%S
+      zend_delay = 1800
+----
+
+TIP: Let's have a look:
+
+. `dst_0`: This is the remote host and the target pool/dataset
+. `pre_znap_cmd`: Send a request to the exporter to inform that we are soon creating a new snapshot for `tank/data/home`.
+  Maybe we need to flush/dump a database first? In that case we could combine the dump and request in a script.
+. `post_znap_cmd`: We are done creating the snapshot.
+. `zend_delay`: We wait for 30 min before sending the newly created snapshot, as there might currently be another active at
+  the same time.
+. `dst_0`: We will send our snapshots to `remote-host`, in dataset `backup/data/home`.
+. `dst_0_precmd`: We will begin sending now, let's inform the exporter about that.
+. `dst_0_pstcmd`: We have successfully created a backup of our dataset. We will keep this metric for an hour,
+  to give time for Prometheus to actually scrape the exporter.
+
+== Reference
+
+[format=csv,cols="Path,Description,Parameters"]
+|===
+`/`,Root (no-op),-
+`/health/alive`,Liveness check for Kubernetes,-
+`/health/ready`,Readiness check for Kubernetes,-
+`/metrics`,Prometheus endpoint for scrapes,-
+`/register/*`,Register new datasets,Path: `pool/dataset`
+`/unregister/*`,Unregister existing datasets,Path: `pool/dataset`
+`/presnap/*`,Sets pre-snapshot metric with given job name (label) to 1,Path: `pool/dataset`; Query: see <<metric-parameters>>
+`/postsnap/*`,Sets post-snapshot metric with given job name (label) to 1,Path: `pool/dataset`; Query: see <<metric-parameters>>
+`/presend/*`,Sets pre-send metric with given job name (label) to 1,Path: `pool/dataset`; Query: see <<metric-parameters>>
+`/postsend/*`,Sets post-send metric with given job name (label) to 1,Path: `pool/dataset`; Query: see <<metric-parameters>>
+|===
+
+[#metric-parameters]
+=== Metric Parameters
+
+TIP: By default, each request to a metric endpoint resets the other gauges, except itself.
+
+[format=csv,cols="Name,Type,Default,Description"]
+|===
+`ResetPreSnap`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/presnap/*`.
+`ResetPostSnap`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/postsnap/*`.
+`ResetPreSend`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/presend/*`.
+`ResetPostSend`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/postsend/*`.
+`SelfResetAfter`,https://golang.org/pkg/time/#ParseDuration[Duration],`0s`,Resets metric for itself after given delay.
+|===
+
+IMPORTANT: Be sure to give enough time for Prometheus to scrape (and potentially retry) the exporter before resetting the
+           metrics for the next snapshot/send window. The time duration depends on the scrape interval.
+
+NOTE: In order specify multiple parameters in the curl commands above, you need to escape the `&` character, e.g.
+      `/usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h\&ResetPostSnap=false`
+
 == Configuration
 
 `znapzend-exporter` can be configured with CLI flags.
@@ -52,14 +129,15 @@ znapzend-exporter (version v0.0.0-snapshot, <commit>, <date>)
 All flags can be read from Environment variables as well (replace . with _ , e.g. LOG_LEVEL).
 However, CLI flags take precedence.
 
-      --bindAddr string    IP Address to bind to listen for Prometheus scrapes (default ":8080")
-      --log.level string   Logging level (default "info")
-pflag: help requested
+      --bindAddr string         IP Address to bind to listen for Prometheus scrapes (default ":8080")
+      --jobs.register strings   A list of job labels to register at startup. Can be specified multiple times
+      --log.level string        Logging level (default "info")
 ----
 
 TIP: All flags are also configurable with Environment variables. Replace the `.` char with `_` and
      uppercase the names in order for them to be recognized, e.g. `--log.level debug` becomes
-     `LOG_LEVEL=debug`
+     `LOG_LEVEL=debug` and `--jobs.register tank/set1 --jobs.register tank/set2` becomes
+     `JOBS_REGISTER=tank/set1,tank/set2`.
 
 == Developing
 
@@ -70,8 +148,4 @@ TIP: All flags are also configurable with Environment variables. Replace the `.`
 
 === Building
 
-. `goreleaser release --snapshot --rm-dist`
-
-=== Unit Test
-
-. `go test ./...`
+. `goreleaser release --snapshot --rm-dist` (includes tests)
