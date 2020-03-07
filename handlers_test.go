@@ -6,10 +6,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 	"net/http/httptest"
-	"reflect"
 	"testing"
 	"time"
 )
+
+func (p Parameters) Initialize() Parameters {
+	p.ResetPreSnap = true
+	p.ResetPostSnap = true
+	p.ResetPreSend = true
+	p.ResetPostSend = true
+	return p
+}
 
 func TestParseAndValidateInput(t *testing.T) {
 	type args struct {
@@ -32,7 +39,7 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank/backup",
 			},
-			want: Parameters{JobName: "tank/backup"},
+			want: Parameters{JobName: "tank/backup"}.Initialize(),
 		},
 		{
 			name: "ShouldFail_AtParsingJobName",
@@ -42,7 +49,7 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/",
 			},
-			want:    Parameters{},
+			want:    Parameters{}.Initialize(),
 			wantErr: true,
 		},
 		{
@@ -55,7 +62,7 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank?ResetPreSnap=asdf",
 			},
-			want:    Parameters{JobName: "tank"},
+			want:    Parameters{JobName: "tank"}.Initialize(),
 			wantErr: true,
 		},
 		{
@@ -71,7 +78,7 @@ func TestParseAndValidateInput(t *testing.T) {
 			want: Parameters{
 				JobName:        "tank",
 				SelfResetAfter: 10 * time.Second,
-			},
+			}.Initialize(),
 		},
 		{
 			name: "ShouldParse_BooleanFlags",
@@ -81,14 +88,14 @@ func TestParseAndValidateInput(t *testing.T) {
 						{Key: "job", Value: "/tank"},
 					},
 				},
-				query: "/tank?ResetPreSnap=true&ResetPostSnap=true&ResetPreSend=true&ResetPostSend=true",
+				query: "/tank?ResetPreSnap=false&ResetPostSnap=false&ResetPreSend=false&ResetPostSend=false",
 			},
 			want: Parameters{
 				JobName:       "tank",
-				ResetPreSnap:  true,
-				ResetPostSnap: true,
-				ResetPreSend:  true,
-				ResetPostSend: true,
+				ResetPreSnap:  false,
+				ResetPostSnap: false,
+				ResetPreSend:  false,
+				ResetPostSend: false,
 			},
 		},
 	}
@@ -97,13 +104,12 @@ func TestParseAndValidateInput(t *testing.T) {
 			req := httptest.NewRequest("GET", tt.args.query, nil)
 			tt.args.context.Request = req
 			got, err := ParseAndValidateInput(tt.args.context)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("error = %v, wantErr %v", err, tt.wantErr)
+			if tt.wantErr {
+				assert.Error(t, err)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("got = %v, want %v", got, tt.want)
-			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
 		})
 	}
 }

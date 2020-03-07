@@ -114,7 +114,12 @@ func handleRoot(context *gin.Context) {
 
 // ParseAndValidateInput parses the query parameters from a given Gin HTTP request. Returns an error upon constraint violations.
 func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
-	p := Parameters{}
+	p := Parameters{
+		ResetPreSnap:   true,
+		ResetPostSnap:  true,
+		ResetPreSend:   true,
+		ResetPostSend:  true,
+	}
 	if p.JobName = strings.TrimPrefix(context.Param("job"), "/"); p.JobName == "" {
 		return p, errors.New("missing Job name in URL")
 	}
