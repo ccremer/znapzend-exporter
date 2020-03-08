@@ -20,6 +20,8 @@ jobs:
         key: go-mod-release
     - name: Login to Docker hub
       run: docker login -u ${{ secrets.DOCKER_HUB_USER }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}
+    - name: Import signing key
+      run: echo "${{ secrets.SIGNING_KEY }}" | gpg --import
     - uses: goreleaser/goreleaser-action@v1
       with:
         args: release
