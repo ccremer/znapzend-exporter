@@ -24,7 +24,7 @@ jobs:
         key: go-mod-build
     - uses: goreleaser/goreleaser-action@v1
       with:
-        args: release --snapshot
+        args: release --snapshot --skip-sign
     - name: Test & Publish Code Coverage
       uses: paambaati/codeclimate-action@v2.5.0
       env:

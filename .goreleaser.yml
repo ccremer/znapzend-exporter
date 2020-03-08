@@ -23,6 +23,10 @@ checksum:
 snapshot:
   name_template: "{{ .Tag }}-snapshot"
 
+signs:
+- artifacts: checksum
+  args: ["-u", "E57761BCB035C49A7068EF97083880A377733DD7", "--output", "${signature}", "--detach-sign", "${artifact}"]
+
 dockers:
 - image_templates:
   - "docker.io/braindoctor/znapzend-exporter:v{{ .Version }}"
@@ -35,6 +39,7 @@ changelog:
     - '^Docs:'
     - '^Test:'
     - '^Refactor:'
+    - '^Merge pull request'
 
 release:
   github:

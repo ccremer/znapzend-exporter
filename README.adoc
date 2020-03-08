@@ -148,4 +148,4 @@ TIP: All flags are also configurable with Environment variables. Replace the `.`
 
 === Building
 
-. `goreleaser release --snapshot --rm-dist` (includes tests)
+. `goreleaser release --snapshot --rm-dist --skip-sign` (also runs the unit tests)
