@@ -32,6 +32,17 @@ dockers:
   - "docker.io/braindoctor/znapzend-exporter:v{{ .Version }}"
   - "docker.io/braindoctor/znapzend-exporter:v{{ .Major }}"
 
+nfpms:
+- vendor: ccremer
+  homepage: https://github.com/ccremer/znapzend-exporter
+  maintainer: ccremer
+  description: A prometheus exporter reporting on the status of Znapzend ZFS backups
+  license: GPL 3.0
+  file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+  formats:
+  - deb
+  - rpm
+
 changelog:
   sort: asc
   filters:
