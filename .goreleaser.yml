@@ -29,8 +29,8 @@ signs:
 
 dockers:
 - image_templates:
-  - "docker.io/braindoctor/znapzend-exporter:v{{ .Version }}"
-  - "docker.io/braindoctor/znapzend-exporter:v{{ .Major }}"
+  - "docker.io/ccremer/znapzend-exporter:v{{ .Version }}"
+  - "docker.io/ccremer/znapzend-exporter:v{{ .Major }}"
 
 nfpms:
 - vendor: ccremer
