@@ -32,4 +32,4 @@ jobs:
       with:
         coverageCommand: go test -coverprofile c.out ./...
         prefix: znapzend-exporter
-        #coverageLocations: ""
+        coverageLocations: ""
