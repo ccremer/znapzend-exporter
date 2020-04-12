@@ -71,7 +71,7 @@ func TestJobContext_ResetMetrics(t *testing.T) {
 			args: args{tuples: []ResetMetricTuple{
 				{resetEnabled: true, vec: preSendMetric},
 			}},
-			expected: 0,
+			expected: 1,
 		},
 		{
 			name: "ShouldNotResetMetric_IfFalse",
