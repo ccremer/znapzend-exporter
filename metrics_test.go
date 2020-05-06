@@ -11,7 +11,7 @@ import (
 
 func TestJobContext_SetMetric(t *testing.T) {
 	type fields struct {
-		Parameters Parameters
+		Parameters Job
 	}
 	type args struct {
 		vec *prometheus.GaugeVec
@@ -25,25 +25,25 @@ func TestJobContext_SetMetric(t *testing.T) {
 		{
 			name: "ShouldSetMetricTo1",
 			fields: fields{
-				Parameters: Parameters{JobName: "pool"},
+				Parameters: Job{JobName: "pool"},
 			},
-			args: args{vec: preSendMetric},
+			args: args{vec: preSnapMetric},
 		},
 		{
 			name: "ShouldResetMetric",
 			fields: fields{
-				Parameters: Parameters{JobName: "pool", SelfResetAfter: time.Second},
+				Parameters: Job{JobName: "pool", SelfResetAfter: time.Second},
 			},
-			args: args{vec: preSendMetric},
+			args: args{vec: preSnapMetric},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.fields.Parameters.setMetric(tt.args.vec)
-			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSendMetric))
+			assert.EqualValues(t, float64(1), testutil.ToFloat64(preSnapMetric))
 			if tt.fields.Parameters.SelfResetAfter > 0 {
 				time.Sleep(1200 * time.Millisecond)
-				assert.EqualValues(t, float64(0), testutil.ToFloat64(preSendMetric))
+				assert.EqualValues(t, float64(0), testutil.ToFloat64(preSnapMetric))
 			}
 		})
 	}
@@ -51,7 +51,7 @@ func TestJobContext_SetMetric(t *testing.T) {
 
 func TestJobContext_ResetMetrics(t *testing.T) {
 	type fields struct {
-		Parameters Parameters
+		Parameters Job
 		Context    *gin.Context
 	}
 	type args struct {
@@ -66,29 +66,30 @@ func TestJobContext_ResetMetrics(t *testing.T) {
 		{
 			name: "ShouldResetMetric_IfTrue",
 			fields: fields{
-				Parameters: Parameters{JobName: "tank"},
+				Parameters: Job{JobName: "tank"},
 			},
 			args: args{tuples: []ResetMetricTuple{
-				{resetEnabled: true, vec: preSendMetric},
+				{resetEnabled: true, vec: preSnapMetric},
 			}},
 			expected: 0,
 		},
 		{
 			name: "ShouldNotResetMetric_IfFalse",
 			fields: fields{
-				Parameters: Parameters{JobName: "tank"},
+				Parameters: Job{JobName: "tank"},
 			},
 			args: args{tuples: []ResetMetricTuple{
-				{resetEnabled: false, vec: preSendMetric},
+				{resetEnabled: false, vec: preSnapMetric},
 			}},
 			expected: 1,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gauge := preSendMetric.WithLabelValues(tt.fields.Parameters.JobName)
+			gauge := preSnapMetric.WithLabelValues(tt.fields.Parameters.JobName)
 			gauge.Set(1)
-			ResetMetrics(tt.fields.Parameters.JobName, tt.args.tuples[:]...)
+			j := Job{JobName: tt.fields.Parameters.JobName}
+			j.ResetMetrics(tt.args.tuples[:]...)
 			assert.EqualValues(t, tt.expected, testutil.ToFloat64(gauge))
 		})
 	}

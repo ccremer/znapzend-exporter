@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (p Parameters) Initialize() Parameters {
+func (p Job) Initialize() Job {
 	p.ResetPreSnap = true
 	p.ResetPostSnap = true
 	p.ResetPreSend = true
@@ -26,11 +26,11 @@ func TestParseAndValidateInput(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    Parameters
+		want    Job
 		wantErr bool
 	}{
 		{
-			name: "ShouldParse_JobName",
+			name: "GivenQuery_WhenValidJob_ThenParseName",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{
@@ -39,21 +39,21 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank/backup",
 			},
-			want: Parameters{JobName: "tank/backup"}.Initialize(),
+			want: Job{JobName: "tank/backup"}.Initialize(),
 		},
 		{
-			name: "ShouldFail_AtParsingJobName",
+			name: "GivenQuery_WhenInvalidQuery_ThenThrowError",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{},
 				},
 				query: "/",
 			},
-			want:    Parameters{}.Initialize(),
+			want:    Job{}.Initialize(),
 			wantErr: true,
 		},
 		{
-			name: "ShouldFail_AtParsingParameters",
+			name: "GivenQueryWithParameter_WhenInvalidBooleanParameter_ThenThrowError",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{
@@ -62,11 +62,11 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank?ResetPreSnap=asdf",
 			},
-			want:    Parameters{JobName: "tank"}.Initialize(),
+			want:    Job{JobName: "tank"}.Initialize(),
 			wantErr: true,
 		},
 		{
-			name: "ShouldParse_SelfResetAfter",
+			name: "GivenQueryWithParameter_WhenQueryContainsSelfResetAfter_ThenParseDuration",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{
@@ -75,13 +75,13 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank?SelfResetAfter=10s",
 			},
-			want: Parameters{
+			want: Job{
 				JobName:        "tank",
 				SelfResetAfter: 10 * time.Second,
 			}.Initialize(),
 		},
 		{
-			name: "ShouldParse_BooleanFlags",
+			name: "GivenQueryWithParameters_WhenBooleanParameters_ThenParseAll",
 			args: args{
 				context: &gin.Context{
 					Params: []gin.Param{
@@ -90,13 +90,37 @@ func TestParseAndValidateInput(t *testing.T) {
 				},
 				query: "/tank?ResetPreSnap=false&ResetPostSnap=false&ResetPreSend=false&ResetPostSend=false",
 			},
-			want: Parameters{
+			want: Job{
 				JobName:       "tank",
 				ResetPreSnap:  false,
 				ResetPostSnap: false,
 				ResetPreSend:  false,
 				ResetPostSend: false,
 			},
+		},
+		{
+			name: "GivenPreSendQuery_WhenNoHostGiven_ThenThrowError",
+			args: args{
+				context: &gin.Context{
+					Params: []gin.Param{
+						{Key: "job", Value: "/tank"},
+					},
+				},
+				query: "/presend/tank",
+			},
+			wantErr: true,
+		},
+		{
+			name: "GivenPostsendQuery_WhenNoHostGiven_ThenThrowError",
+			args: args{
+				context: &gin.Context{
+					Params: []gin.Param{
+						{Key: "job", Value: "/tank"},
+					},
+				},
+				query: "/postsend/tank",
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -129,7 +153,7 @@ func Test_handleCommands(t *testing.T) {
 		expectations []expectation
 	}{
 		{
-			name: "PreSnap_ShouldSetMetric",
+			name: "GivenPreSnapQuery_WhenJobValid_ThenSetMetricValue",
 			args: args{
 				query: "/presnap/pool",
 			},
@@ -138,7 +162,7 @@ func Test_handleCommands(t *testing.T) {
 			},
 		},
 		{
-			name: "PostSnap_ShouldSetMetric",
+			name: "GivenPostSnapQuery_WhenJobValid_ThenSetMetric",
 			args: args{
 				query: "/postsnap/pool",
 			},
@@ -147,9 +171,9 @@ func Test_handleCommands(t *testing.T) {
 			},
 		},
 		{
-			name: "PostSnap_ShouldReset_PreSnap",
+			name: "GivenPostSnapQuery_WhenResetPreSnapTrue_ThenResetPreSnap",
 			args: args{
-				query: "/postsnap/pool?ResetPreSnap=true",
+				query: "/postsnap/pool?ResetPreSnap=true&TargetHost=host",
 			},
 			expectations: []expectation{
 				{gauge: preSnapMetric.WithLabelValues("pool"), initial: 1, expected: 0},
@@ -157,41 +181,41 @@ func Test_handleCommands(t *testing.T) {
 			},
 		},
 		{
-			name: "PreSend_ShouldSetMetric",
+			name: "GivenPreSendQuery_WhenHostGiven_ThenSetMetric",
 			args: args{
-				query: "/presend/pool",
+				query: "/presend/pool?TargetHost=host",
 			},
 			expectations: []expectation{
-				{gauge: preSendMetric.WithLabelValues("pool"), expected: 1},
+				{gauge: preSendMetric.WithLabelValues("pool", "host"), expected: 1},
 			},
 		},
 		{
-			name: "PreSend_ShouldReset_PostSnap",
+			name: "GivenPreSendQuery_WhenResetPostSnapTrue_ThenResetPostSnap",
 			args: args{
-				query: "/presend/pool?ResetPostSnap=true",
+				query: "/presend/pool?ResetPostSnap=true&TargetHost=host",
 			},
 			expectations: []expectation{
 				{gauge: postSnapMetric.WithLabelValues("pool"), initial: 1, expected: 0},
-				{gauge: preSendMetric.WithLabelValues("pool"), expected: 1},
+				{gauge: preSendMetric.WithLabelValues("pool", "host"), expected: 1},
 			},
 		},
 		{
-			name: "PostSend_ShouldSetMetric",
+			name: "GivenPostSendQuery_WhenResetPostSnapTrue_ThenSetMetric",
 			args: args{
-				query: "/postsend/pool?ResetPostSnap=true",
+				query: "/postsend/pool?ResetPostSnap=true&TargetHost=host",
 			},
 			expectations: []expectation{
-				{gauge: postSendMetric.WithLabelValues("pool"), expected: 1},
+				{gauge: postSendMetric.WithLabelValues("pool", "host"), expected: 1},
 			},
 		},
 		{
-			name: "PostSend_ShouldReset_PreSend",
+			name: "GivenPostSendQuery_WhenResetPreSendTrue_ThenResetPreSend",
 			args: args{
-				query: "/postsend/pool?ResetPreSend=true",
+				query: "/postsend/pool?ResetPreSend=true&TargetHost=host",
 			},
 			expectations: []expectation{
-				{gauge: preSendMetric.WithLabelValues("pool"), initial: 1, expected: 0},
-				{gauge: postSendMetric.WithLabelValues("pool"), expected: 1},
+				{gauge: preSendMetric.WithLabelValues("pool", "host"), initial: 1, expected: 0},
+				{gauge: postSendMetric.WithLabelValues("pool", "host"), expected: 1},
 			},
 		},
 	}

@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	flag "github.com/spf13/pflag"
 	"os"
+	"strings"
 )
 
 var (
@@ -46,10 +47,15 @@ func main() {
 	}
 
 	for _, job := range cfg.Jobs.Register {
-		if err := RegisterMetric(job); err != nil {
-			log.WithField("label", job).WithError(err).Warn("Failed to register job.")
+		arr := strings.Split(job, "@")
+		j := Job{JobName: arr[0]}
+		if len(arr) >= 2 {
+			j.TargetHost = arr[1]
+		}
+		if err := j.RegisterMetric(); err != nil {
+			log.WithField("job", job).WithError(err).Warn("Failed to register job.")
 		} else {
-			log.WithField("label", job).Info("Registered job.")
+			log.WithField("job", job).Info("Registered job.")
 		}
 	}
 
