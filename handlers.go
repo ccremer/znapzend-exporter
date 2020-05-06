@@ -11,14 +11,15 @@ import (
 )
 
 type (
-	// Parameters contains query parameters that modify the behaviour of the exporter
-	Parameters struct {
+	// Job contains query parameters that modify the behaviour of the exporter
+	Job struct {
 		JobName        string
 		ResetPreSnap   bool          `binding:"-"`
 		ResetPostSnap  bool          `binding:"-"`
 		ResetPreSend   bool          `binding:"-"`
 		ResetPostSend  bool          `binding:"-"`
 		SelfResetAfter time.Duration `binding:"-"`
+		TargetHost     string        `binding:"-"`
 	}
 )
 
@@ -31,48 +32,46 @@ const (
 )
 
 func handlePreSnap(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
+	job := context.MustGet(parameterKey).(Job)
 	job.setMetric(preSnapMetric)
-	ResetMetrics(job.JobName,
-		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
-		ResetMetricTuple{job.ResetPreSend, preSendMetric},
-		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	job.ResetMetrics(
+		ResetMetricTuple{job.ResetPostSnap, "", postSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, "", preSendMetric},
 	)
 }
 
 func handlePostSnap(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
+	job := context.MustGet(parameterKey).(Job)
 	job.setMetric(postSnapMetric)
-	ResetMetrics(job.JobName,
-		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
-		ResetMetricTuple{job.ResetPreSend, preSendMetric},
-		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	job.ResetMetrics(
+		ResetMetricTuple{job.ResetPreSnap, "", preSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, "", preSendMetric},
 	)
 }
 
 func handlePreSend(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
-	job.setMetric(preSendMetric)
-	ResetMetrics(job.JobName,
-		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
-		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
-		ResetMetricTuple{job.ResetPostSend, postSendMetric},
+	job := context.MustGet(parameterKey).(Job)
+	job.setMetricWithHost(preSendMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.ResetPreSnap, "", preSnapMetric},
+		ResetMetricTuple{job.ResetPostSnap, "", postSnapMetric},
+		ResetMetricTuple{job.ResetPostSend, job.TargetHost, postSendMetric},
 	)
 }
 
 func handlePostSend(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
-	job.setMetric(postSendMetric)
-	ResetMetrics(job.JobName,
-		ResetMetricTuple{job.ResetPreSnap, preSnapMetric},
-		ResetMetricTuple{job.ResetPostSnap, postSnapMetric},
-		ResetMetricTuple{job.ResetPreSend, preSendMetric},
+	job := context.MustGet(parameterKey).(Job)
+	job.setMetricWithHost(postSendMetric)
+	job.ResetMetrics(
+		ResetMetricTuple{job.ResetPreSnap, "", preSnapMetric},
+		ResetMetricTuple{job.ResetPostSnap, "", postSnapMetric},
+		ResetMetricTuple{job.ResetPreSend, job.TargetHost, preSendMetric},
 	)
 }
 
 func handleRegister(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
-	if err := RegisterMetric(job.JobName); err != nil {
+	job := context.MustGet(parameterKey).(Job)
+	if err := job.RegisterMetric(); err != nil {
 		SetLogWithFields(context, log.WarnLevel, "Could not register metric.", log.Fields{
 			"error": err,
 		})
@@ -86,8 +85,8 @@ func handleRegister(context *gin.Context) {
 }
 
 func handleUnregister(context *gin.Context) {
-	job := context.MustGet(parameterKey).(Parameters)
-	UnregisterMetric(job.JobName)
+	job := context.MustGet(parameterKey).(Job)
+	job.UnregisterMetric()
 	context.JSON(http.StatusOK, gin.H{"status": "unregistered", "job": job.JobName})
 }
 
@@ -113,18 +112,23 @@ func handleRoot(context *gin.Context) {
 }
 
 // ParseAndValidateInput parses the query parameters from a given Gin HTTP request. Returns an error upon constraint violations.
-func ParseAndValidateInput(context *gin.Context) (Parameters, error) {
-	p := Parameters{
+func ParseAndValidateInput(c *gin.Context) (Job, error) {
+	p := Job{
 		ResetPreSnap:  true,
 		ResetPostSnap: true,
 		ResetPreSend:  true,
 		ResetPostSend: true,
 	}
-	if p.JobName = strings.TrimPrefix(context.Param("job"), "/"); p.JobName == "" {
+	if p.JobName = strings.TrimPrefix(c.Param("job"), "/"); p.JobName == "" {
 		return p, errors.New("missing Job name in URL")
 	}
-	if err := context.ShouldBindQuery(&p); err != nil {
+	if err := c.ShouldBindQuery(&p); err != nil {
 		return p, err
+	}
+	if strings.HasPrefix(c.Request.URL.Path, "/postsend") || strings.HasPrefix(c.Request.URL.Path, "/presend") {
+		if p.TargetHost == "" {
+			return p, errors.New("missing TargetHost parameter in query")
+		}
 	}
 	log.WithFields(log.Fields{
 		"parameters": p,

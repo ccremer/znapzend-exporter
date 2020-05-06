@@ -55,8 +55,8 @@ Setup ZnapZend with `znapzendzetup`, so that your config could look like this:
 *** backup plan: tank/data/home ***
            dst_0 = remote-host:backup/data/home
       dst_0_plan = 14days=>1day,60days=>1week,12months=>1month
-    dst_0_precmd = /usr/bin/curl -sS localhost:8080/presend/tank/data/home
-    dst_0_pstcmd = /usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h
+    dst_0_precmd = /usr/bin/curl -sS localhost:8080/presend/tank/data/home?TargetHost=remote-host
+    dst_0_pstcmd = /usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h\&TargetHost=remote-host
          enabled = on
          mbuffer = off
     mbuffer_size = 1G
@@ -110,13 +110,18 @@ TIP: By default, each request to a metric endpoint resets the other gauges, exce
 `ResetPreSend`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/presend/*`.
 `ResetPostSend`,bool,`true`,Resets pre-snapshot metric to 0. Ineffective for `/postsend/*`.
 `SelfResetAfter`,https://golang.org/pkg/time/#ParseDuration[Duration],`0s`,Resets metric for itself after given delay.
+`TargetHost`,string,`""`,Sets the `target_host` label with this value. Only effective for `/presend/\*` and `/postsend/*`.
 |===
 
 IMPORTANT: Be sure to give enough time for Prometheus to scrape (and potentially retry) the exporter before resetting the
            metrics for the next snapshot/send window. The time duration depends on the scrape interval.
 
 NOTE: In order specify multiple parameters in the curl commands above, you need to escape the `&` character, e.g.
-      `/usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h\&ResetPostSnap=false`
+      `/usr/bin/curl -sS localhost:8080/postsend/tank/data/home?SelfResetAfter=1h\&TargetHost=backup.host`
+
+TIP: To register jobs in advance including Pre/Post-Send metrics, specify the remote host after an `@` char e.g.
+     `--jobs.register tank/data/home@host-1 --jobs.register tank/data/home@host-2` (the same source dataset can have
+     multiple target hosts).
 
 == Configuration
 
