@@ -41,6 +41,16 @@ and this tool leverages this feature by providing a endpoint URLs for CURL reque
 . `mv $the_binary /usr/local/bin/znapzend-exporter`
 . `znapzend-exporter --help`
 
+=== Package
+
+. Download latest Deb/Rpm package from the https://github.com/ccremer/znapzend-exporter/releases[Releases page]
+. `dpkg -i znapzend-exporter_linux_amd64.deb` (Debian/Ubuntu)
+. `rpm -i znapzend-exporter_linux_amd64.rpm` (CentOS)
+
+=== Helm Chart
+
+Znapzend and the exporter bundled in a https://ccremer.github.io/charts/znapzend/[Helm Chart]
+
 == Usage
 
 ZnapZend allows you to specify pre/post-snapshot and pre/post-send commands that are being executed
@@ -153,4 +163,8 @@ TIP: All flags are also configurable with Environment variables. Replace the `.`
 
 === Building
 
-. `goreleaser release --snapshot --rm-dist --skip-sign` (also runs the unit tests)
+. `make build`
+
+=== Tests
+
+. `make test`
