@@ -3,7 +3,6 @@
 before:
   hooks:
   - go vet ./...
-  - go test -coverprofile c.out ./...
 
 builds:
 - env:
