@@ -8,6 +8,11 @@ ifdef::env-github[]
 :warning-caption: :warning:
 endif::[]
 
+= UNMAINTAINED
+
+As I don't use znapzend anymore, I personally have no need for this exporter anymore.
+It's there for archival or for forks only.
+
 = Znapzend Exporter
 
 ifdef::status[]
